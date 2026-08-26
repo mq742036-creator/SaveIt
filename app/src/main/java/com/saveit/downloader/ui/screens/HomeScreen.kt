@@ -8,7 +8,6 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -22,14 +21,11 @@ import androidx.compose.ui.draw.*
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,7 +63,6 @@ fun HomeScreen(
 
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 
-    // Animated gradient background
     val infiniteTransition = rememberInfiniteTransition()
     val gradientOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -91,7 +86,6 @@ fun HomeScreen(
                 )
             )
     ) {
-        // Animated gradient overlay
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -119,7 +113,6 @@ fun HomeScreen(
         ) {
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Header with logo and actions
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -203,7 +196,6 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Hero text
             Text(
                 text = "Paste any video link",
                 fontSize = 28.sp,
@@ -220,7 +212,6 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // URL Input Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -306,7 +297,6 @@ fun HomeScreen(
                             )
                         }
 
-                        // Paste button
                         IconButton(
                             onClick = {
                                 val clip = clipboardManager.primaryClip
@@ -317,7 +307,6 @@ fun HomeScreen(
                                         videoInfo = null
                                         selectedQuality = null
                                         showError = false
-                                        // Auto-analyze
                                         analyzeUrl(pastedText, viewModel) { info, error ->
                                             if (info != null) {
                                                 videoInfo = info
@@ -341,7 +330,6 @@ fun HomeScreen(
                             )
                         }
 
-                        // Clear button
                         if (urlText.isNotBlank()) {
                             IconButton(
                                 onClick = {
@@ -382,7 +370,6 @@ fun HomeScreen(
                         }
                     }
 
-                    // Analyze button
                     if (urlText.isNotBlank() && videoInfo == null && !isAnalyzing) {
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(
@@ -438,7 +425,6 @@ fun HomeScreen(
                 }
             }
 
-            // Video Info Card (when analyzed)
             AnimatedVisibility(
                 visible = videoInfo != null,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { 40 }),
@@ -461,7 +447,6 @@ fun HomeScreen(
                         Column(
                             modifier = Modifier.padding(16.dp)
                         ) {
-                            // Platform badge
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -508,7 +493,6 @@ fun HomeScreen(
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            // Duration and size
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
@@ -548,7 +532,6 @@ fun HomeScreen(
 
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            // Quality selection
                             Text(
                                 text = "Select Quality",
                                 fontSize = 13.sp,
@@ -557,11 +540,12 @@ fun HomeScreen(
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
 
+                            // FIXED: Removed horizontalArrangement from LazyColumn
                             LazyColumn(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(if (info.qualities.size > 3) 140.dp else 80.dp)
+                                    .height(if (info.qualities.size > 3) 140.dp else 80.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 items(info.qualities.size) { index ->
                                     val quality = info.qualities[index]
@@ -575,7 +559,6 @@ fun HomeScreen(
 
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            // Download button
                             Button(
                                 onClick = {
                                     if (selectedQuality != null && urlText.isNotBlank()) {
@@ -594,7 +577,6 @@ fun HomeScreen(
                                                 downloadProgress = 0f
                                                 downloadedItem = item
                                                 showSuccessDialog = true
-                                                // Reset for next download
                                                 videoInfo = null
                                                 urlText = ""
                                                 selectedQuality = null
@@ -662,7 +644,6 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Supported platforms
             Text(
                 text = "Supported Platforms",
                 fontSize = 13.sp,
@@ -684,7 +665,6 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(80.dp))
         }
 
-        // Success Dialog
         if (showSuccessDialog && downloadedItem != null) {
             AlertDialog(
                 onDismissRequest = {
@@ -813,7 +793,5 @@ private fun analyzeUrl(
     viewModel: DownloadViewModel,
     callback: (VideoInfo?, String?) -> Unit
 ) {
-    // Simulate analysis - in a real app, this would parse the URL
-    // and fetch video info from the respective platform
     viewModel.analyzeUrl(url, callback)
 }
