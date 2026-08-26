@@ -2,7 +2,6 @@ package com.saveit.downloader.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -66,7 +65,7 @@ fun DownloadsScreen(
             if (downloadItems.isNotEmpty()) {
                 TextButton(
                     onClick = { viewModel.clearCompletedDownloads() },
-                    colors = TextButtonDefaults.textButtonColors(
+                    colors = ButtonDefaults.buttonColors(
                         contentColor = SaveItError
                     )
                 ) {
@@ -76,7 +75,6 @@ fun DownloadsScreen(
         }
 
         if (downloadItems.isEmpty()) {
-            // Empty state
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -168,7 +166,6 @@ fun DownloadItemCard(
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Status icon
             Box(
                 modifier = Modifier
                     .size(44.dp)
@@ -212,7 +209,6 @@ fun DownloadItemCard(
 
             Spacer(modifier = Modifier.width(14.dp))
 
-            // Info
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -258,7 +254,6 @@ fun DownloadItemCard(
                 }
             }
 
-            // Actions
             when (item.status) {
                 DownloadItem.Status.COMPLETED -> {
                     IconButton(
@@ -314,7 +309,6 @@ fun DownloadItemCard(
             }
         }
 
-        // Progress bar for downloading
         if (item.status == DownloadItem.Status.DOWNLOADING) {
             LinearProgressIndicator(
                 progress = item.progress,
