@@ -9,7 +9,7 @@ import com.saveit.downloader.model.VideoInfo
 import dev.ffmpegkit.maintained.ytdlp.YtDlp
 import dev.ffmpegkit.maintained.ytdlp.YtDlpRequest
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job  // ✅ ADDED: Fix missing Job import
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,7 +33,6 @@ class DownloadViewModel : ViewModel() {
 
     fun analyzeUrl(url: String, callback: (VideoInfo?, String?) -> Unit) {
         viewModelScope.launch {
-            // Simulate network delay for analysis
             delay(800 + Random.nextLong(200, 600))
 
             val platform = detectPlatform(url)
@@ -42,7 +41,6 @@ class DownloadViewModel : ViewModel() {
                 return@launch
             }
 
-            // Simulate fetching video info
             val qualities = when (Random.nextInt(1, 4)) {
                 1 -> listOf(VideoInfo.Quality.P480, VideoInfo.Quality.P720)
                 2 -> listOf(VideoInfo.Quality.P480, VideoInfo.Quality.P720, VideoInfo.Quality.P1080)
@@ -62,7 +60,6 @@ class DownloadViewModel : ViewModel() {
         }
     }
 
-    // 🎯 REAL DOWNLOAD FUNCTION - uses yt-dlp engine
     fun downloadVideoReal(
         url: String,
         quality: VideoInfo.Quality,
@@ -83,20 +80,17 @@ class DownloadViewModel : ViewModel() {
             VideoInfo.Quality.P1080 -> "1080p"
         }
 
-        // 1. Determine the output format based on quality
         val formatOption = when (quality) {
             VideoInfo.Quality.P480 -> "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480][ext=mp4]/best[height<=480]"
             VideoInfo.Quality.P720 -> "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[height<=720]"
             VideoInfo.Quality.P1080 -> "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best[height<=1080]"
         }
 
-        // 2. Set the output directory (Downloads/SaveIt)
         val downloadDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SaveIt")
         if (!downloadDir.exists()) {
             downloadDir.mkdirs()
         }
 
-        // 3. Create a temporary download item
         val fileName = "${platform}_video_${System.currentTimeMillis()}.mp4"
         val downloadItem = DownloadItem(
             fileName = fileName,
@@ -109,12 +103,10 @@ class DownloadViewModel : ViewModel() {
             progress = 0f
         )
 
-        // Add to list
         val currentItems = _downloadItems.value.toMutableList()
         currentItems.add(0, downloadItem)
         _downloadItems.value = currentItems
 
-        // 4. Build the yt-dlp request with output template
         val outputTemplate = File(downloadDir, "%(title)s_%(height)sp.%(ext)s").absolutePath
 
         val request = YtDlpRequest(url)
@@ -123,17 +115,15 @@ class DownloadViewModel : ViewModel() {
             .addOption("--no-warnings")
             .setOutputTemplate(outputTemplate)
 
-        // 5. Execute the download
         viewModelScope.launch {
             try {
                 val resultFile = suspendCancellableCoroutine<File> { continuation ->
                     YtDlp.executeAsync(request,
-                        { progress, eta, line ->
-                            // Progress callback - runs on background thread
+                        // ✅ FIXED: Added explicit types for lambda parameters
+                        { progress: Long, eta: Long, line: String ->
                             val progressPercent = progress.toFloat() / 100f
                             viewModelScope.launch(Dispatchers.Main) {
                                 onProgress(progressPercent)
-                                // Update download item progress
                                 val items = _downloadItems.value.toMutableList()
                                 val index = items.indexOfFirst { it.id == downloadItem.id }
                                 if (index != -1) {
@@ -147,7 +137,6 @@ class DownloadViewModel : ViewModel() {
                         },
                         // ✅ FIXED: Added explicit types for lambda parameters
                         { outputFile: File?, exception: Exception? ->
-                            // Completion callback - runs on main thread
                             if (exception == null && outputFile != null) {
                                 continuation.resume(outputFile)
                             } else {
@@ -157,7 +146,6 @@ class DownloadViewModel : ViewModel() {
                     )
                 }
 
-                // 6. Download successful
                 _isDownloading.value = false
 
                 val finalItem = DownloadItem(
@@ -173,7 +161,6 @@ class DownloadViewModel : ViewModel() {
                     timestamp = System.currentTimeMillis()
                 )
 
-                // Update the list
                 val items = _downloadItems.value.toMutableList()
                 val index = items.indexOfFirst { it.id == downloadItem.id }
                 if (index != -1) {
@@ -185,7 +172,6 @@ class DownloadViewModel : ViewModel() {
                 onComplete(finalItem)
 
             } catch (e: Exception) {
-                // 7. Download failed
                 _isDownloading.value = false
                 Log.e("SaveIt", "❌ Download failed", e)
 
@@ -204,7 +190,6 @@ class DownloadViewModel : ViewModel() {
         }
     }
 
-    // Legacy simulated download (kept for reference, but we'll use the real one)
     fun downloadVideo(
         url: String,
         quality: VideoInfo.Quality,
@@ -212,12 +197,10 @@ class DownloadViewModel : ViewModel() {
         onComplete: (DownloadItem) -> Unit,
         onError: (String) -> Unit
     ) {
-        // This now calls the real download function
         downloadVideoReal(url, quality, onProgress, onComplete, onError)
     }
 
     fun deleteDownload(item: DownloadItem) {
-        // Delete the actual file if it exists
         try {
             val file = File(item.filePath)
             if (file.exists()) {
@@ -231,13 +214,11 @@ class DownloadViewModel : ViewModel() {
         items.removeAll { it.id == item.id }
         _downloadItems.value = items
 
-        // Cancel job if running
         downloadJobs[item.id]?.cancel()
         downloadJobs.remove(item.id)
     }
 
     fun retryDownload(item: DownloadItem) {
-        // Delete the failed file if it exists
         try {
             val file = File(item.filePath)
             if (file.exists()) {
@@ -248,7 +229,6 @@ class DownloadViewModel : ViewModel() {
         }
 
         deleteDownload(item)
-        // Re-download with same parameters
         val quality = when (item.quality) {
             "480p" -> VideoInfo.Quality.P480
             "720p" -> VideoInfo.Quality.P720
