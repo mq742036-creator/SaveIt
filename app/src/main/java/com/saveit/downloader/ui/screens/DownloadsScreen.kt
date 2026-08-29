@@ -1,4 +1,3 @@
-import androidx.compose.material.icons.filled.PlayArrow
 package com.saveit.downloader.ui.screens
 
 import androidx.compose.animation.*
@@ -29,7 +28,8 @@ import com.saveit.downloader.viewmodel.DownloadViewModel
 @Composable
 fun DownloadsScreen(
     viewModel: DownloadViewModel = viewModel(),
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToPlayer: (String) -> Unit  // ✅ NEW: Added this parameter
 ) {
     val downloadItems by viewModel.downloadItems.collectAsState()
     
@@ -76,6 +76,7 @@ fun DownloadsScreen(
         }
 
         if (downloadItems.isEmpty()) {
+            // Empty state
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -128,10 +129,12 @@ fun DownloadsScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(downloadItems) { item ->
+                    // ✅ Pass onNavigateToPlayer to the card
                     DownloadItemCard(
                         item = item,
                         onDelete = { viewModel.deleteDownload(item) },
-                        onRetry = { viewModel.retryDownload(item) }
+                        onRetry = { viewModel.retryDownload(item) },
+                        onPlay = { onNavigateToPlayer(item.filePath) }  // ✅ NEW: Pass play callback
                     )
                 }
             }
@@ -143,7 +146,8 @@ fun DownloadsScreen(
 fun DownloadItemCard(
     item: DownloadItem,
     onDelete: () -> Unit,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    onPlay: () -> Unit  // ✅ NEW: Added this parameter
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -167,6 +171,7 @@ fun DownloadItemCard(
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Status icon
             Box(
                 modifier = Modifier
                     .size(44.dp)
@@ -182,30 +187,12 @@ fun DownloadItemCard(
                 contentAlignment = Alignment.Center
             ) {
                 when (item.status) {
-                    DownloadItem.Status.COMPLETED -> {
-    IconButton(
-        onClick = { /* Navigate to player */ },
-        modifier = Modifier.size(32.dp)
-    ) {
-        Icon(
-            imageVector = Icons.Default.PlayArrow,
-            contentDescription = "Play",
-            tint = SaveItSecondary,
-            modifier = Modifier.size(20.dp)
-        )
-    }
-    IconButton(
-        onClick = onDelete,
-        modifier = Modifier.size(32.dp)
-    ) {
-        Icon(
-            imageVector = Icons.Default.Delete,
-            contentDescription = "Delete",
-            tint = SaveItTextSecondary,
-            modifier = Modifier.size(18.dp)
-        )
-    }
-}
+                    DownloadItem.Status.COMPLETED -> Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Completed",
+                        tint = SaveItSuccess,
+                        modifier = Modifier.size(22.dp)
+                    )
                     DownloadItem.Status.DOWNLOADING -> CircularProgressIndicator(
                         modifier = Modifier.size(22.dp),
                         color = SaveItSecondary,
@@ -228,6 +215,7 @@ fun DownloadItemCard(
 
             Spacer(modifier = Modifier.width(14.dp))
 
+            // Info
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -273,8 +261,21 @@ fun DownloadItemCard(
                 }
             }
 
+            // Actions
             when (item.status) {
                 DownloadItem.Status.COMPLETED -> {
+                    // ✅ NEW: Play button for completed downloads
+                    IconButton(
+                        onClick = onPlay,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = "Play",
+                            tint = SaveItSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                     IconButton(
                         onClick = onDelete,
                         modifier = Modifier.size(32.dp)
@@ -313,7 +314,7 @@ fun DownloadItemCard(
                 }
                 DownloadItem.Status.DOWNLOADING -> {
                     IconButton(
-                        onClick = { /* Cancel download */ },
+                        onClick = { /* Cancel download - can be implemented later */ },
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
@@ -328,6 +329,7 @@ fun DownloadItemCard(
             }
         }
 
+        // Progress bar for downloading
         if (item.status == DownloadItem.Status.DOWNLOADING) {
             LinearProgressIndicator(
                 progress = item.progress,
