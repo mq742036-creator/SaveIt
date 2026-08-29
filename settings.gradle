@@ -11,6 +11,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // ✅ REQUIRED for youtubedl-android library
         maven { url 'https://jitpack.io' }
     }
 }
