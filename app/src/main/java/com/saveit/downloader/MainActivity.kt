@@ -1,7 +1,6 @@
 package com.saveit.downloader
 
 import android.Manifest
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -13,7 +12,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -23,25 +21,27 @@ import com.saveit.downloader.ui.screens.SettingsScreen
 import com.saveit.downloader.ui.screens.VideoPlayerScreen
 import com.saveit.downloader.ui.theme.SaveItTheme
 import com.saveit.downloader.viewmodel.DownloadViewModel
-// ✅ Import FFmpegKit yt-dlp
-import dev.ffmpegkit.maintained.ytdlp.YtDlp
-import dev.ffmpegkit.maintained.ytdlp.YtDlpException
+// ✅ CORRECT IMPORTS for youtubedl-android
+import com.github.yausername.youtubedl_android.YoutubeDL
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 🎯 Initialize yt-dlp engine using FFmpegKit
+        // 🎯 Initialize youtube-dl engine
         try {
-            YtDlp.init(this)
-            Log.d("SaveIt", "✅ yt-dlp initialized successfully!")
-        } catch (e: YtDlpException) {
-            Log.e("SaveIt", "❌ Failed to initialize yt-dlp", e)
+            if (!YoutubeDL.getInstance().isInitialized) {
+                YoutubeDL.getInstance().init(this)
+                Log.d("SaveIt", "✅ youtube-dl initialized successfully!")
+            }
+        } catch (e: Exception) {
+            Log.e("SaveIt", "❌ Failed to initialize youtube-dl", e)
         }
 
         // Request storage permissions
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requestPermissions(
+            ActivityCompat.requestPermissions(
+                this,
                 arrayOf(
                     Manifest.permission.POST_NOTIFICATIONS,
                     Manifest.permission.READ_MEDIA_VIDEO,
@@ -51,7 +51,8 @@ class MainActivity : ComponentActivity() {
                 100
             )
         } else {
-            requestPermissions(
+            ActivityCompat.requestPermissions(
+                this,
                 arrayOf(
                     Manifest.permission.WRITE_EXTERNAL_STORAGE,
                     Manifest.permission.READ_EXTERNAL_STORAGE
