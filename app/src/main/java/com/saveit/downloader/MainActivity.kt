@@ -12,9 +12,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.saveit.downloader.ui.screens.DownloadsScreen
 import com.saveit.downloader.ui.screens.HomeScreen
 import com.saveit.downloader.ui.screens.SettingsScreen
@@ -28,6 +30,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Initialize youtube-dl engine
         try {
             YoutubeDL.getInstance().init(this)
             Log.d("SaveIt", "✅ youtube-dl initialized successfully!")
@@ -35,6 +38,7 @@ class MainActivity : ComponentActivity() {
             Log.e("SaveIt", "❌ Failed to initialize youtube-dl", e)
         }
 
+        // Request storage permissions
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ActivityCompat.requestPermissions(
                 this,
@@ -89,6 +93,7 @@ fun SaveItApp() {
                 }
             )
         }
+
         composable("downloads") {
             DownloadsScreen(
                 viewModel = viewModel,
@@ -98,27 +103,22 @@ fun SaveItApp() {
                 }
             )
         }
+
         composable("settings") {
             SettingsScreen(
                 viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+
         composable(
-    route = "player/{filePath}",
-    arguments = listOf(
-        navArgument("filePath") {
-            defaultValue = ""
-            type = NavType.StringType
-        }
-    )
-) { backStackEntry ->
-    val filePath = backStackEntry.arguments?.getString("filePath") ?: ""
-    VideoPlayerScreen(
-        filePath = filePath,
-        onNavigateBack = { navController.popBackStack() }
-    )
-}
+            route = "player/{filePath}",
+            arguments = listOf(
+                navArgument("filePath") {
+                    defaultValue = ""
+                    type = NavType.StringType
+                }
+            )
         ) { backStackEntry ->
             val filePath = backStackEntry.arguments?.getString("filePath") ?: ""
             VideoPlayerScreen(
