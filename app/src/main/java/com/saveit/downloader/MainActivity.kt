@@ -21,8 +21,9 @@ import com.saveit.downloader.ui.screens.SettingsScreen
 import com.saveit.downloader.ui.screens.VideoPlayerScreen
 import com.saveit.downloader.ui.theme.SaveItTheme
 import com.saveit.downloader.viewmodel.DownloadViewModel
-import com.github.yausername.youtubedl_android.YoutubeDL
-import com.github.yausername.youtubedl_android.YoutubeDLException
+// ✅ CORRECT PACKAGE for the library
+import com.yausername.youtubedl_android.YoutubeDL
+import com.yausername.youtubedl_android.YoutubeDLException
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
