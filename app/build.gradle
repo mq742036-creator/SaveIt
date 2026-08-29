@@ -70,7 +70,7 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
 
-    // ✅ FIXED: yt-dlp for Android - Correct dependency
+    // yt-dlp for Android
     implementation 'dev.ffmpegkit-maintained:yt-dlp-android:3.0.0'
 
     // Video Player
