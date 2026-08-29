@@ -30,12 +30,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.saveit.downloader.R
 import com.saveit.downloader.model.DownloadItem
 import com.saveit.downloader.model.VideoInfo
 import com.saveit.downloader.ui.theme.*
 import com.saveit.downloader.viewmodel.DownloadViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
@@ -43,7 +41,8 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     viewModel: DownloadViewModel = viewModel(),
     onNavigateToDownloads: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    onNavigateToPlayer: (String) -> Unit
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -540,7 +539,6 @@ fun HomeScreen(
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
 
-                            // FIXED: Removed horizontalArrangement from LazyColumn
                             LazyColumn(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -559,6 +557,7 @@ fun HomeScreen(
 
                             Spacer(modifier = Modifier.height(16.dp))
 
+                            // 🎯 REAL DOWNLOAD BUTTON - calls the real download function
                             Button(
                                 onClick = {
                                     if (selectedQuality != null && urlText.isNotBlank()) {
@@ -566,7 +565,7 @@ fun HomeScreen(
                                         downloadProgress = 0f
                                         keyboardController?.hide()
                                         
-                                        viewModel.downloadVideo(
+                                        viewModel.downloadVideoReal(
                                             url = urlText,
                                             quality = selectedQuality!!,
                                             onProgress = { progress ->
@@ -716,13 +715,28 @@ fun HomeScreen(
                     }
                 },
                 confirmButton = {
-                    TextButton(
-                        onClick = {
-                            showSuccessDialog = false
-                            downloadedItem = null
-                        }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Great!", color = SaveItPrimary)
+                        TextButton(
+                            onClick = {
+                                downloadedItem?.let {
+                                    onNavigateToPlayer(it.filePath)
+                                }
+                                showSuccessDialog = false
+                                downloadedItem = null
+                            }
+                        ) {
+                            Text("▶ Play", color = SaveItSecondary)
+                        }
+                        TextButton(
+                            onClick = {
+                                showSuccessDialog = false
+                                downloadedItem = null
+                            }
+                        ) {
+                            Text("OK", color = SaveItPrimary)
+                        }
                     }
                 },
                 containerColor = SaveItSurface,
