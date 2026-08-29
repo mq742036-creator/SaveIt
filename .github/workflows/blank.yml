@@ -22,36 +22,11 @@ jobs:
       with:
         gradle-version: '8.2'
         
-    - name: 🔍 Check Project Structure
-      run: |
-        echo "=== Checking project structure ==="
-        ls -la
-        echo ""
-        echo "=== Checking app folder ==="
-        ls -la app/ || echo "app folder not found"
-        echo ""
-        echo "=== Checking app/build.gradle ==="
-        head -20 app/build.gradle || echo "app/build.gradle not found"
-        
     - name: Build Debug APK
-      run: |
-        echo "=== Starting build ==="
-        gradle assembleDebug --stacktrace || echo "Build failed!"
-        
-    - name: 🔍 Find APK Location
-      run: |
-        echo "=== Looking for APK files ==="
-        find . -name "*.apk" -type f 2>/dev/null || echo "No APK found anywhere"
-        echo ""
-        echo "=== Checking build output directory ==="
-        ls -la app/build/outputs/apk/debug/ 2>/dev/null || echo "Directory doesn't exist"
-        echo ""
-        echo "=== Checking all build directories ==="
-        find app/build -type d 2>/dev/null | head -20 || echo "No build directory found"
+      run: gradle assembleDebug
       
     - name: Upload APK as Artifact
       uses: actions/upload-artifact@v4
       with:
         name: SaveIt-APK
-        path: app/build/outputs/apk/debug/app-debug.apk
-      continue-on-error: true
+        path: app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
