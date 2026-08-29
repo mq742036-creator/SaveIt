@@ -11,7 +11,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://jitpack.io' }   // ✅ MUST HAVE
+        // JitPack is required for some dependencies
+        maven { url 'https://jitpack.io' }
     }
 }
 
