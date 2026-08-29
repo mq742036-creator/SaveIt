@@ -91,13 +91,7 @@ class DownloadViewModel : ViewModel() {
             downloadDir.mkdirs()
         }
 
-        // Build request
-        val outputTemplate = File(downloadDir, "%(title)s_%(height)sp.%(ext)s").absolutePath
-        val request = YoutubeDLRequest(url)
-        request.option("--no-playlist")
-        request.option("-f", formatOption)
-        request.option("-o", outputTemplate)
-
+        // Create download item
         val downloadItem = DownloadItem(
             fileName = "Downloading...",
             filePath = "",
@@ -114,11 +108,18 @@ class DownloadViewModel : ViewModel() {
         _downloadItems.value = currentItems
         val itemId = downloadItem.id
 
+        // Build request
+        val outputTemplate = File(downloadDir, "%(title)s_%(height)sp.%(ext)s").absolutePath
+        val request = YoutubeDLRequest(url)
+        request.option("--no-playlist")
+        request.option("-f", formatOption)
+        request.option("-o", outputTemplate)
+
         viewModelScope.launch {
             try {
-                // Execute the request with progress callback
-                val result = suspendCancellableCoroutine<File> { continuation ->
-                    YoutubeDL.getInstance().execute(request) { progress, eta, line ->
+                val resultFile = suspendCancellableCoroutine<File> { continuation ->
+                    // ✅ FIXED: Explicit parameter types for the lambda
+                    YoutubeDL.getInstance().execute(request) { progress: Int, eta: Long, line: String ->
                         val progressPercent = progress.toFloat() / 100f
                         viewModelScope.launch(Dispatchers.Main) {
                             onProgress(progressPercent)
@@ -133,7 +134,7 @@ class DownloadViewModel : ViewModel() {
                             }
                         }
                     }?.let { command ->
-                        // This will run after completion
+                        // This runs after completion
                         val files = downloadDir.listFiles()
                         val latest = files?.maxByOrNull { it.lastModified() }
                         if (latest != null) {
@@ -148,9 +149,9 @@ class DownloadViewModel : ViewModel() {
 
                 val finalItem = DownloadItem(
                     id = itemId,
-                    fileName = result.name,
-                    filePath = result.absolutePath,
-                    fileSize = formatFileSize(result.length()),
+                    fileName = resultFile.name,
+                    filePath = resultFile.absolutePath,
+                    fileSize = formatFileSize(resultFile.length()),
                     url = url,
                     platform = platform,
                     quality = qualityLabel,
@@ -166,7 +167,7 @@ class DownloadViewModel : ViewModel() {
                     _downloadItems.value = items
                 }
 
-                Log.d("SaveIt", "✅ Download complete: ${result.absolutePath}")
+                Log.d("SaveIt", "✅ Download complete: ${resultFile.absolutePath}")
                 onComplete(finalItem)
 
             } catch (e: Exception) {
