@@ -1,13 +1,24 @@
 package com.saveit.downloader.viewmodel
 
+import android.os.Environment
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.*
+import com.saveit.downloader.model.DownloadItem
+import com.saveit.downloader.model.VideoInfo
+import dev.ffmpegkit.maintained.ytdlp.YtDlp
+import dev.ffmpegkit.maintained.ytdlp.YtDlpRequest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import com.saveit.downloader.model.DownloadItem
-import com.saveit.downloader.model.VideoInfo
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import java.io.File
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlin.random.Random
 
 class DownloadViewModel : ViewModel() {
@@ -50,7 +61,8 @@ class DownloadViewModel : ViewModel() {
         }
     }
 
-    fun downloadVideo(
+    // 🎯 REAL DOWNLOAD FUNCTION - uses yt-dlp engine
+    fun downloadVideoReal(
         url: String,
         quality: VideoInfo.Quality,
         onProgress: (Float) -> Unit,
@@ -70,10 +82,24 @@ class DownloadViewModel : ViewModel() {
             VideoInfo.Quality.P1080 -> "1080p"
         }
 
+        // 1. Determine the output format based on quality
+        val formatOption = when (quality) {
+            VideoInfo.Quality.P480 -> "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480][ext=mp4]/best[height<=480]"
+            VideoInfo.Quality.P720 -> "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[height<=720]"
+            VideoInfo.Quality.P1080 -> "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best[height<=1080]"
+        }
+
+        // 2. Set the output directory (Downloads/SaveIt)
+        val downloadDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SaveIt")
+        if (!downloadDir.exists()) {
+            downloadDir.mkdirs()
+        }
+
+        // 3. Create a temporary download item
         val fileName = "${platform}_video_${System.currentTimeMillis()}.mp4"
         val downloadItem = DownloadItem(
             fileName = fileName,
-            filePath = "/storage/emulated/0/Download/SaveIt/$fileName",
+            filePath = File(downloadDir, fileName).absolutePath,
             fileSize = "Calculating...",
             url = url,
             platform = platform,
@@ -87,71 +113,118 @@ class DownloadViewModel : ViewModel() {
         currentItems.add(0, downloadItem)
         _downloadItems.value = currentItems
 
-        val job = viewModelScope.launch(Dispatchers.IO) {
+        // 4. Build the yt-dlp request with output template
+        val outputTemplate = File(downloadDir, "%(title)s_%(height)sp.%(ext)s").absolutePath
+
+        val request = YtDlpRequest(url)
+            .addOption("-f", formatOption)
+            .addOption("--no-playlist")
+            .addOption("--no-warnings")
+            .setOutputTemplate(outputTemplate)
+
+        // 5. Execute the download
+        viewModelScope.launch {
             try {
-                // Simulate download with progress
-                var progress = 0f
-                while (progress < 1f) {
-                    delay(100)
-                    progress += 0.01f + Random.nextFloat() * 0.03f
-                    if (progress > 1f) progress = 1f
-
-                    val updatedItems = _downloadItems.value.toMutableList()
-                    val index = updatedItems.indexOfFirst { it.id == downloadItem.id }
-                    if (index != -1) {
-                        updatedItems[index] = updatedItems[index].copy(
-                            progress = progress,
-                            status = DownloadItem.Status.DOWNLOADING
-                        )
-                        _downloadItems.value = updatedItems
-                    }
-                    withContext(Dispatchers.Main) {
-                        onProgress(progress)
-                    }
-                }
-
-                // Simulate file size calculation
-                val fileSizeBytes = Random.nextLong(10, 200) * 1024 * 1024
-
-                // Mark as completed
-                val completedItems = _downloadItems.value.toMutableList()
-                val idx = completedItems.indexOfFirst { it.id == downloadItem.id }
-                if (idx != -1) {
-                    completedItems[idx] = completedItems[idx].copy(
-                        status = DownloadItem.Status.COMPLETED,
-                        progress = 1f,
-                        fileSize = formatFileSize(fileSizeBytes)
+                val resultFile = suspendCancellableCoroutine<File> { continuation ->
+                    YtDlp.executeAsync(request,
+                        { progress, eta, line ->
+                            // Progress callback - runs on background thread
+                            val progressPercent = progress.toFloat() / 100f
+                            viewModelScope.launch(Dispatchers.Main) {
+                                onProgress(progressPercent)
+                                // Update download item progress
+                                val items = _downloadItems.value.toMutableList()
+                                val index = items.indexOfFirst { it.id == downloadItem.id }
+                                if (index != -1) {
+                                    items[index] = items[index].copy(
+                                        progress = progressPercent,
+                                        status = DownloadItem.Status.DOWNLOADING
+                                    )
+                                    _downloadItems.value = items
+                                }
+                            }
+                        },
+                        { outputFile, exception ->
+                            // Completion callback - runs on main thread
+                            if (exception == null && outputFile != null) {
+                                continuation.resume(outputFile)
+                            } else {
+                                continuation.resumeWithException(exception ?: Exception("Download failed"))
+                            }
+                        }
                     )
-                    _downloadItems.value = completedItems
                 }
 
-                withContext(Dispatchers.Main) {
-                    onComplete(completedItems.find { it.id == downloadItem.id } ?: downloadItem)
+                // 6. Download successful
+                _isDownloading.value = false
+
+                val finalItem = DownloadItem(
+                    id = downloadItem.id,
+                    fileName = resultFile.name,
+                    filePath = resultFile.absolutePath,
+                    fileSize = formatFileSize(resultFile.length()),
+                    url = url,
+                    platform = platform,
+                    quality = qualityLabel,
+                    status = DownloadItem.Status.COMPLETED,
+                    progress = 1f,
+                    timestamp = System.currentTimeMillis()
+                )
+
+                // Update the list
+                val items = _downloadItems.value.toMutableList()
+                val index = items.indexOfFirst { it.id == downloadItem.id }
+                if (index != -1) {
+                    items[index] = finalItem
+                    _downloadItems.value = items
                 }
+
+                Log.d("SaveIt", "✅ Download complete: ${resultFile.absolutePath}")
+                onComplete(finalItem)
+
             } catch (e: Exception) {
-                // Mark as failed
-                val failedItems = _downloadItems.value.toMutableList()
-                val idx = failedItems.indexOfFirst { it.id == downloadItem.id }
-                if (idx != -1) {
-                    failedItems[idx] = failedItems[idx].copy(
+                // 7. Download failed
+                _isDownloading.value = false
+                Log.e("SaveIt", "❌ Download failed", e)
+
+                val items = _downloadItems.value.toMutableList()
+                val index = items.indexOfFirst { it.id == downloadItem.id }
+                if (index != -1) {
+                    items[index] = items[index].copy(
                         status = DownloadItem.Status.FAILED,
                         progress = 0f
                     )
-                    _downloadItems.value = failedItems
+                    _downloadItems.value = items
                 }
-                withContext(Dispatchers.Main) {
-                    onError(e.message ?: "Download failed")
-                }
-            } finally {
-                _isDownloading.value = false
-                downloadJobs.remove(downloadItem.id)
+
+                onError(e.message ?: "Download failed")
             }
         }
+    }
 
-        downloadJobs[downloadItem.id] = job
+    // Legacy simulated download (kept for reference, but we'll use the real one)
+    fun downloadVideo(
+        url: String,
+        quality: VideoInfo.Quality,
+        onProgress: (Float) -> Unit,
+        onComplete: (DownloadItem) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        // This now calls the real download function
+        downloadVideoReal(url, quality, onProgress, onComplete, onError)
     }
 
     fun deleteDownload(item: DownloadItem) {
+        // Delete the actual file if it exists
+        try {
+            val file = File(item.filePath)
+            if (file.exists()) {
+                file.delete()
+            }
+        } catch (e: Exception) {
+            Log.e("SaveIt", "Failed to delete file", e)
+        }
+
         val items = _downloadItems.value.toMutableList()
         items.removeAll { it.id == item.id }
         _downloadItems.value = items
@@ -162,6 +235,16 @@ class DownloadViewModel : ViewModel() {
     }
 
     fun retryDownload(item: DownloadItem) {
+        // Delete the failed file if it exists
+        try {
+            val file = File(item.filePath)
+            if (file.exists()) {
+                file.delete()
+            }
+        } catch (e: Exception) {
+            // Ignore
+        }
+
         deleteDownload(item)
         // Re-download with same parameters
         val quality = when (item.quality) {
@@ -170,7 +253,7 @@ class DownloadViewModel : ViewModel() {
             "1080p" -> VideoInfo.Quality.P1080
             else -> VideoInfo.Quality.P720
         }
-        downloadVideo(
+        downloadVideoReal(
             url = item.url,
             quality = quality,
             onProgress = {},
