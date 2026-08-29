@@ -4,10 +4,10 @@ import android.os.Environment
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.github.yausername.youtubedl_android.YoutubeDL
-import com.github.yausername.youtubedl_android.YoutubeDLRequest
 import com.saveit.downloader.model.DownloadItem
 import com.saveit.downloader.model.VideoInfo
+import dev.ffmpegkit.maintained.ytdlp.YtDlp
+import dev.ffmpegkit.maintained.ytdlp.YtDlpRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -80,21 +80,24 @@ class DownloadViewModel : ViewModel() {
             VideoInfo.Quality.P1080 -> "1080p"
         }
 
+        // Format option based on quality
         val formatOption = when (quality) {
             VideoInfo.Quality.P480 -> "best[height<=480]"
             VideoInfo.Quality.P720 -> "best[height<=720]"
             VideoInfo.Quality.P1080 -> "best[height<=1080]"
         }
 
+        // Download directory
         val downloadDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SaveIt")
         if (!downloadDir.exists()) {
             downloadDir.mkdirs()
         }
 
-        val fileName = "${platform}_video_${System.currentTimeMillis()}.%(ext)s"
+        // Create download item
+        val fileName = "${platform}_video_${System.currentTimeMillis()}"
         val downloadItem = DownloadItem(
-            fileName = fileName,
-            filePath = File(downloadDir, fileName).absolutePath,
+            fileName = "$fileName.mp4",
+            filePath = File(downloadDir, "$fileName.mp4").absolutePath,
             fileSize = "Calculating...",
             url = url,
             platform = platform,
@@ -103,53 +106,55 @@ class DownloadViewModel : ViewModel() {
             progress = 0f
         )
 
+        // Add to list
         val currentItems = _downloadItems.value.toMutableList()
         currentItems.add(0, downloadItem)
         _downloadItems.value = currentItems
 
-        // Build youtube-dl request
-        val request = YoutubeDLRequest(url)
-        request.option("--no-playlist")
-        request.option("-f", formatOption)
-        request.option("-o", File(downloadDir, "%(title)s_%(height)sp.%(ext)s").absolutePath)
+        // Build yt-dlp request
+        val outputTemplate = File(downloadDir, "%(title)s_%(height)sp.%(ext)s").absolutePath
+        val request = YtDlpRequest(url)
+            .addOption("-f", formatOption)
+            .addOption("--no-playlist")
+            .addOption("--no-warnings")
+            .setOutputTemplate(outputTemplate)
 
         viewModelScope.launch {
             try {
-                val result = suspendCancellableCoroutine { continuation ->
-                    YoutubeDL.getInstance().execute(request) { progress, eta, line ->
-                        // Progress callback
-                        val progressPercent = progress.toFloat() / 100f
-                        viewModelScope.launch(Dispatchers.Main) {
-                            onProgress(progressPercent)
-                            val items = _downloadItems.value.toMutableList()
-                            val index = items.indexOfFirst { it.id == downloadItem.id }
-                            if (index != -1) {
-                                items[index] = items[index].copy(
-                                    progress = progressPercent,
-                                    status = DownloadItem.Status.DOWNLOADING
-                                )
-                                _downloadItems.value = items
+                val resultFile = suspendCancellableCoroutine<File> { continuation ->
+                    YtDlp.executeAsync(request,
+                        { progress: Long, eta: Long, line: String ->
+                            val progressPercent = progress.toFloat() / 100f
+                            viewModelScope.launch(Dispatchers.Main) {
+                                onProgress(progressPercent)
+                                val items = _downloadItems.value.toMutableList()
+                                val index = items.indexOfFirst { it.id == downloadItem.id }
+                                if (index != -1) {
+                                    items[index] = items[index].copy(
+                                        progress = progressPercent,
+                                        status = DownloadItem.Status.DOWNLOADING
+                                    )
+                                    _downloadItems.value = items
+                                }
+                            }
+                        },
+                        { outputFile: File?, exception: Exception? ->
+                            if (exception == null && outputFile != null) {
+                                continuation.resume(outputFile)
+                            } else {
+                                continuation.resumeWithException(exception ?: Exception("Download failed"))
                             }
                         }
-                    }?.let { command ->
-                        // This runs when download completes
-                        val outputFile = File(downloadDir).listFiles()
-                            ?.maxByOrNull { it.lastModified() }
-                        if (outputFile != null) {
-                            continuation.resume(outputFile)
-                        } else {
-                            continuation.resumeWithException(Exception("No output file found"))
-                        }
-                    }
+                    )
                 }
 
                 _isDownloading.value = false
 
                 val finalItem = DownloadItem(
                     id = downloadItem.id,
-                    fileName = result.name,
-                    filePath = result.absolutePath,
-                    fileSize = formatFileSize(result.length()),
+                    fileName = resultFile.name,
+                    filePath = resultFile.absolutePath,
+                    fileSize = formatFileSize(resultFile.length()),
                     url = url,
                     platform = platform,
                     quality = qualityLabel,
@@ -165,7 +170,7 @@ class DownloadViewModel : ViewModel() {
                     _downloadItems.value = items
                 }
 
-                Log.d("SaveIt", "✅ Download complete: ${result.absolutePath}")
+                Log.d("SaveIt", "✅ Download complete: ${resultFile.absolutePath}")
                 onComplete(finalItem)
 
             } catch (e: Exception) {
