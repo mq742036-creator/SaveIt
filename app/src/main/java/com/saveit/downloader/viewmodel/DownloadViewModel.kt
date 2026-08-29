@@ -9,6 +9,7 @@ import com.saveit.downloader.model.VideoInfo
 import dev.ffmpegkit.maintained.ytdlp.YtDlp
 import dev.ffmpegkit.maintained.ytdlp.YtDlpRequest
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job  // ✅ ADDED: Fix missing Job import
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -144,7 +145,8 @@ class DownloadViewModel : ViewModel() {
                                 }
                             }
                         },
-                        { outputFile, exception ->
+                        // ✅ FIXED: Added explicit types for lambda parameters
+                        { outputFile: File?, exception: Exception? ->
                             // Completion callback - runs on main thread
                             if (exception == null && outputFile != null) {
                                 continuation.resume(outputFile)
