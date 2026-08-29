@@ -21,20 +21,18 @@ import com.saveit.downloader.ui.screens.SettingsScreen
 import com.saveit.downloader.ui.screens.VideoPlayerScreen
 import com.saveit.downloader.ui.theme.SaveItTheme
 import com.saveit.downloader.viewmodel.DownloadViewModel
-// ✅ CORRECT IMPORTS for youtubedl-android
 import com.github.yausername.youtubedl_android.YoutubeDL
+import com.github.yausername.youtubedl_android.YoutubeDLException
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 🎯 Initialize youtube-dl engine
+        // Initialize youtube-dl engine
         try {
-            if (!YoutubeDL.getInstance().isInitialized) {
-                YoutubeDL.getInstance().init(this)
-                Log.d("SaveIt", "✅ youtube-dl initialized successfully!")
-            }
-        } catch (e: Exception) {
+            YoutubeDL.getInstance().init(this)
+            Log.d("SaveIt", "✅ youtube-dl initialized successfully!")
+        } catch (e: YoutubeDLException) {
             Log.e("SaveIt", "❌ Failed to initialize youtube-dl", e)
         }
 
