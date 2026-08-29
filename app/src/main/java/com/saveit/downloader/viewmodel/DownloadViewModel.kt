@@ -4,10 +4,11 @@ import android.os.Environment
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.github.yausername.youtubedl_android.YoutubeDL
-import com.github.yausername.youtubedl_android.YoutubeDLRequest
 import com.saveit.downloader.model.DownloadItem
 import com.saveit.downloader.model.VideoInfo
+// ✅ CORRECT PACKAGE for the library
+import com.yausername.youtubedl_android.YoutubeDL
+import com.yausername.youtubedl_android.YoutubeDLRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -118,7 +119,7 @@ class DownloadViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val resultFile = suspendCancellableCoroutine<File> { continuation ->
-                    // ✅ FIXED: Explicit parameter types for the lambda
+                    // ✅ FIXED: Explicit parameter types for lambda
                     YoutubeDL.getInstance().execute(request) { progress: Int, eta: Long, line: String ->
                         val progressPercent = progress.toFloat() / 100f
                         viewModelScope.launch(Dispatchers.Main) {
