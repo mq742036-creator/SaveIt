@@ -182,12 +182,30 @@ fun DownloadItemCard(
                 contentAlignment = Alignment.Center
             ) {
                 when (item.status) {
-                    DownloadItem.Status.COMPLETED -> Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = "Completed",
-                        tint = SaveItSuccess,
-                        modifier = Modifier.size(22.dp)
-                    )
+                    DownloadItem.Status.COMPLETED -> {
+    IconButton(
+        onClick = { /* Navigate to player */ },
+        modifier = Modifier.size(32.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.PlayArrow,
+            contentDescription = "Play",
+            tint = SaveItSecondary,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+    IconButton(
+        onClick = onDelete,
+        modifier = Modifier.size(32.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Delete,
+            contentDescription = "Delete",
+            tint = SaveItTextSecondary,
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
                     DownloadItem.Status.DOWNLOADING -> CircularProgressIndicator(
                         modifier = Modifier.size(22.dp),
                         color = SaveItSecondary,
