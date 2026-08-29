@@ -1,6 +1,5 @@
 package com.saveit.downloader
-import dev.ffmpegkit.maintained.ytdlp.YtDlp
-import dev.ffmpegkit.maintained.ytdlp.YtDlpException
+
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -24,19 +23,23 @@ import com.saveit.downloader.ui.screens.SettingsScreen
 import com.saveit.downloader.ui.screens.VideoPlayerScreen
 import com.saveit.downloader.ui.theme.SaveItTheme
 import com.saveit.downloader.viewmodel.DownloadViewModel
-import dev.ffmpegkit.maintained.ytdlp.YtDlp
-import dev.ffmpegkit.maintained.ytdlp.YtDlpException
+// ✅ NEW IMPORTS for youtubedl-android library
+import com.github.yausername.youtubedl_android.YoutubeDL
+import com.github.yausername.youtubedl_android.YoutubeDLRequest
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 🎯 Initialize yt-dlp engine
+        // 🎯 Initialize youtube-dl engine
         try {
-            YtDlp.init(this)
-            Log.d("SaveIt", "✅ yt-dlp initialized successfully!")
-        } catch (e: YtDlpException) {
-            Log.e("SaveIt", "❌ Failed to initialize yt-dlp", e)
+            // Check if the YouTubeDL instance is already initialized
+            if (!YoutubeDL.getInstance().isInitialized) {
+                YoutubeDL.getInstance().init(this)
+                Log.d("SaveIt", "✅ youtube-dl initialized successfully!")
+            }
+        } catch (e: Exception) {
+            Log.e("SaveIt", "❌ Failed to initialize youtube-dl", e)
         }
 
         // Request storage permissions
