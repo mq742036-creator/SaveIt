@@ -70,8 +70,8 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
 
-    // ✅ CORRECT yt-dlp library - This one works!
-    implementation 'com.github.yausername:youtubedl-android:1.0.2'
+    // ✅ SIMPLE & RELIABLE: yt-dlp via FFmpegKit (available on Maven Central)
+    implementation 'dev.ffmpegkit:yt-dlp:1.0.0'
 
     // Video Player
     implementation 'androidx.media3:media3-exoplayer:1.3.1'
