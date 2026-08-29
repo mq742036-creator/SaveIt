@@ -5,3 +5,12 @@ plugins {
     id 'org.jetbrains.kotlin.android' version '1.9.20' apply false
     id 'com.google.dagger.hilt.android' version '2.48' apply false
 }
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        // ✅ Add JitPack for yt-dlp
+        maven { url 'https://jitpack.io' }
+    }
+}
