@@ -105,12 +105,20 @@ fun SaveItApp() {
             )
         }
         composable(
-            route = "player/{filePath}",
-            arguments = listOf(
-                androidx.navigation.NavArgument("filePath") {
-                    defaultValue = ""
-                }
-            )
+    route = "player/{filePath}",
+    arguments = listOf(
+        navArgument("filePath") {
+            defaultValue = ""
+            type = NavType.StringType
+        }
+    )
+) { backStackEntry ->
+    val filePath = backStackEntry.arguments?.getString("filePath") ?: ""
+    VideoPlayerScreen(
+        filePath = filePath,
+        onNavigateBack = { navController.popBackStack() }
+    )
+}
         ) { backStackEntry ->
             val filePath = backStackEntry.arguments?.getString("filePath") ?: ""
             VideoPlayerScreen(
